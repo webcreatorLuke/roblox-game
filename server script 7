@@ -1,0 +1,121 @@
+-- ===== MOVING PLATFORM SCRIPT =====
+-- Place this script inside moving platform parts as a SERVER SCRIPT
+-- Configure the movement path below
+
+local platform = script.Parent
+local TweenService = game:GetService("TweenService")
+
+-- CONFIGURE YOUR MOVEMENT HERE:
+local START_POSITION = platform.Position
+local END_POSITION = START_POSITION + Vector3.new(0, 0, 50) -- Move 50 studs on Z-axis
+local MOVE_TIME = 5 -- seconds to complete one way
+local WAIT_TIME = 1 -- seconds to wait at each end
+
+-- Platform appearance
+platform.BrickColor = BrickColor.new("Bright orange")
+platform.Material = Enum.Material.Concrete
+platform.Anchored = true
+
+-- Add platform lighting for visibility
+local platformLight = Instance.new("PointLight")
+platformLight.Parent = platform
+platformLight.Color = Color3.new(1, 0.5, 0)
+platformLight.Brightness = 1
+platformLight.Range = 10
+
+-- Create warning particles to show movement
+local warningEffect = Instance.new("ParticleEmitter")
+warningEffect.Parent = platform
+warningEffect.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+warningEffect.Color = ColorSequence.new(Color3.new(1, 0.5, 0))
+warningEffect.Lifetime = NumberRange.new(0.5, 1)
+warningEffect.Rate = 20
+warningEffect.SpreadAngle = Vector2.new(45, 45)
+warningEffect.Speed = NumberRange.new(2, 5)
+
+-- Movement function
+local function movePlatform()
+    while true do
+        -- Move to end position
+        local moveToEnd = TweenService:Create(
+            platform,
+            TweenInfo.new(MOVE_TIME, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+            {Position = END_POSITION}
+        )
+        
+        moveToEnd:Play()
+        moveToEnd.Completed:Wait()
+        
+        -- Wait at end position
+        wait(WAIT_TIME)
+        
+        -- Move back to start position
+        local moveToStart = TweenService:Create(
+            platform,
+            TweenInfo.new(MOVE_TIME, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+            {Position = START_POSITION}
+        )
+        
+        moveToStart:Play()
+        moveToStart.Completed:Wait()
+        
+        -- Wait at start position
+        wait(WAIT_TIME)
+    end
+end
+
+-- Function to weld players to platform (prevents falling off)
+local function weldPlayersOnPlatform()
+    local playersOnPlatform = {}
+    
+    -- Check for players touching the platform
+    platform.Touched:Connect(function(hit)
+        local humanoid = hit.Parent:FindFirstChild("Humanoid")
+        if humanoid then
+            local player = game.Players:GetPlayerFromCharacter(hit.Parent)
+            if player and not playersOnPlatform[player] then
+                playersOnPlatform[player] = true
+                
+                -- Create temporary weld to keep player on platform
+                local character = player.Character
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    local weld = Instance.new("WeldConstraint")
+                    weld.Name = "PlatformWeld"
+                    weld.Part0 = platform
+                    weld.Part1 = humanoidRootPart
+                    weld.Parent = platform
+                    
+                    print(player.Name .. " boarded the moving platform")
+                end
+            end
+        end
+    end)
+    
+    -- Check for players leaving the platform
+    platform.TouchEnded:Connect(function(hit)
+        local humanoid = hit.Parent:FindFirstChild("Humanoid")
+        if humanoid then
+            local player = game.Players:GetPlayerFromCharacter(hit.Parent)
+            if player and playersOnPlatform[player] then
+                playersOnPlatform[player] = nil
+                
+                -- Remove weld
+                local weld = platform:FindFirstChild("PlatformWeld")
+                if weld then
+                    weld:Destroy()
+                    print(player.Name .. " left the moving platform")
+                end
+            end
+        end
+    end)
+end
+
+-- Start the platform movement
+spawn(movePlatform)
+
+-- Enable player welding system
+weldPlayersOnPlatform()
+
+print("Moving Platform script loaded for:", platform.Name)
+print("Platform moves between:", START_POSITION, "and", END_POSITION)
