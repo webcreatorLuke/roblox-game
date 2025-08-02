@@ -1,0 +1,113 @@
+-- ===== TELEPORTER SCRIPT =====
+-- Place this script inside teleporter parts as a SERVER SCRIPT
+-- Configure the DESTINATION below to where you want players to teleport
+
+local teleporter = script.Parent
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+-- IMPORTANT: Change this to your desired destination coordinates
+local DESTINATION = Vector3.new(100, 20, 0) -- X, Y, Z coordinates
+local TELEPORT_COOLDOWN = 2 -- seconds between teleports
+
+-- Teleporter appearance
+teleporter.BrickColor = BrickColor.new("Bright violet")
+teleporter.Material = Enum.Material.ForceField
+teleporter.Shape = Enum.PartType.Cylinder
+teleporter.Size = Vector3.new(2, 12, 12) -- Ring shape
+
+-- Add portal lighting
+local portalLight = Instance.new("PointLight")
+portalLight.Parent = teleporter
+portalLight.Color = Color3.new(0.5, 0, 1)
+portalLight.Brightness = 3
+portalLight.Range = 20
+
+-- Create portal rotation effect
+local portalTween = TweenService:Create(
+    teleporter,
+    TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+    {Rotation = teleporter.Rotation + Vector3.new(360, 0, 0)}
+)
+portalTween:Play()
+
+-- Portal particle effects
+local portalEffect = Instance.new("ParticleEmitter")
+portalEffect.Parent = teleporter
+portalEffect.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+portalEffect.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.new(0.5, 0, 1)),
+    ColorSequenceKeypoint.new(0.5, Color3.new(0, 0.5, 1)),
+    ColorSequenceKeypoint.new(1, Color3.new(1, 0, 1))
+}
+portalEffect.Lifetime = NumberRange.new(2, 4)
+portalEffect.Rate = 50
+portalEffect.SpreadAngle = Vector2.new(360, 360)
+portalEffect.Speed = NumberRange.new(5, 15)
+
+-- Track last teleport times to prevent spam
+local lastTeleport = {}
+
+-- Teleportation function
+local function onTouch(hit)
+    local humanoid = hit.Parent:FindFirstChild("Humanoid")
+    if humanoid then
+        local player = Players:GetPlayerFromCharacter(hit.Parent)
+        if player then
+            local currentTime = tick()
+            
+            -- Check cooldown
+            if not lastTeleport[player] or currentTime - lastTeleport[player] > TELEPORT_COOLDOWN then
+                lastTeleport[player] = currentTime
+                
+                local character = player.Character
+                local rootPart = character:FindFirstChild("HumanoidRootPart")
+                if rootPart then
+                    
+                    -- Teleport effect at origin
+                    local teleportEffect1 = Instance.new("ParticleEmitter")
+                    teleportEffect1.Parent = rootPart
+                    teleportEffect1.Texture = "rbxasset://textures/particles/smoke_main.dds"
+                    teleportEffect1.Color = ColorSequence.new(Color3.new(0.5, 0, 1))
+                    teleportEffect1.Lifetime = NumberRange.new(1, 2)
+                    teleportEffect1.Rate = 100
+                    teleportEffect1.Enabled = true
+                    
+                    -- Smooth teleport animation
+                    local teleportTween = TweenService:Create(
+                        rootPart,
+                        TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                        {CFrame = CFrame.new(DESTINATION)}
+                    )
+                    teleportTween:Play()
+                    
+                    -- Stop origin effect and create destination effect
+                    wait(0.5)
+                    teleportEffect1.Enabled = false
+                    
+                    local teleportEffect2 = Instance.new("ParticleEmitter")
+                    teleportEffect2.Parent = rootPart
+                    teleportEffect2.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+                    teleportEffect2.Color = ColorSequence.new(Color3.new(1, 1, 0))
+                    teleportEffect2.Lifetime = NumberRange.new(0.5, 1)
+                    teleportEffect2.Rate = 50
+                    teleportEffect2.Enabled = true
+                    
+                    -- Clean up effects
+                    wait(1)
+                    teleportEffect1:Destroy()
+                    teleportEffect2.Enabled = false
+                    game:GetService("Debris"):AddItem(teleportEffect2, 2)
+                    
+                    print(player.Name .. " teleported!")
+                end
+            end
+        end
+    end
+end
+
+-- Connect the touch event
+teleporter.Touched:Connect(onTouch)
+
+print("Teleporter script loaded for:", teleporter.Name)
+print("Destination set to:", DESTINATION)
