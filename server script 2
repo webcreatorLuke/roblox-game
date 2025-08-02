@@ -1,0 +1,88 @@
+-- ===== COIN COLLECTION SCRIPT =====
+-- Place this script inside each coin part as a SERVER SCRIPT
+-- This handles coin collection mechanics with animations
+
+local coin = script.Parent
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
+
+-- Wait for RemoteEvents to load
+local remoteEvents = ReplicatedStorage:WaitForChild("RemoteEvents")
+local coinCollected = remoteEvents:WaitForChild("CoinCollected")
+
+-- Coin properties
+local COIN_VALUE = 10
+local RESPAWN_TIME = 30
+
+-- Make coin look appealing
+coin.BrickColor = BrickColor.new("Bright yellow")
+coin.Material = Enum.Material.Neon
+coin.Shape = Enum.PartType.Cylinder
+
+-- Create spinning animation
+local spinTween = TweenService:Create(
+    coin,
+    TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+    {Rotation = coin.Rotation + Vector3.new(0, 360, 0)}
+)
+spinTween:Play()
+
+-- Create floating animation
+local originalPosition = coin.Position
+local floatTween = TweenService:Create(
+    coin,
+    TweenInfo.new(3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    {Position = originalPosition + Vector3.new(0, 2, 0)}
+)
+floatTween:Play()
+
+-- Coin collection function
+local function onTouch(hit)
+    local humanoid = hit.Parent:FindFirstChild("Humanoid")
+    if humanoid then
+        local player = Players:GetPlayerFromCharacter(hit.Parent)
+        if player and coin.Transparency == 0 then -- Only collect if visible
+            
+            -- Fire remote event to server
+            coinCollected:FireServer(COIN_VALUE)
+            
+            -- Collection visual effects
+            local collectTween = TweenService:Create(
+                coin,
+                TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                {Size = Vector3.new(0, 0, 0), Transparency = 1}
+            )
+            collectTween:Play()
+            
+            -- Particle effect
+            local collectEffect = Instance.new("ParticleEmitter")
+            collectEffect.Parent = coin
+            collectEffect.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+            collectEffect.Color = ColorSequence.new(Color3.new(1, 1, 0))
+            collectEffect.Lifetime = NumberRange.new(0.5, 1)
+            collectEffect.Rate = 100
+            collectEffect.Enabled = true
+            
+            -- Hide coin temporarily
+            coin.CanCollide = false
+            
+            -- Stop particle effect
+            wait(0.5)
+            collectEffect.Enabled = false
+            
+            -- Respawn coin after delay
+            wait(RESPAWN_TIME - 0.5)
+            coin.CanCollide = true
+            coin.Transparency = 0
+            coin.Size = Vector3.new(4, 0.5, 4) -- Reset size
+            collectEffect:Destroy()
+        end
+    end
+end
+
+-- Connect the touch event
+coin.Touched:Connect(onTouch)
+
+print("Coin script loaded for:", coin.Name)
