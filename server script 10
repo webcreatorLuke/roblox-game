@@ -300,4 +300,28 @@ end)
 -- Update minimap player position
 RunService.Heartbeat:Connect(function()
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        local position
+        local position = player.Character.HumanoidRootPart.Position
+        -- Simple minimap positioning (you can customize this based on your map size)
+        local mapSize = 500 -- Adjust based on your game world size
+        local xPercent = math.clamp((position.X + mapSize/2) / mapSize, 0.1, 0.9)
+        local zPercent = math.clamp((position.Z + mapSize/2) / mapSize, 0.1, 0.9)
+        
+        playerDot.Position = UDim2.new(xPercent, -3, zPercent, -3)
+    end
+end)
+
+-- Hide info panel after 10 seconds
+spawn(function()
+    wait(10)
+    local hideTween = TweenService:Create(
+        infoFrame,
+        TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {Position = UDim2.new(0, 10, 1, 20)}
+    )
+    hideTween:Play()
+end)
+
+-- Export power-up notification function for other scripts to use
+_G.ShowPowerUpNotification = showPowerUpNotification
+
+print("Enhanced GUI loaded successfully!")
