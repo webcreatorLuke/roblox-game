@@ -1,0 +1,177 @@
+-- ===== HEALTH PACK SCRIPT =====
+-- Place this script inside health pack parts as a SERVER SCRIPT
+-- This heals players when they touch it
+
+local healthPack = script.Parent
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+-- Health pack settings
+local HEAL_AMOUNT = 50
+local RESPAWN_TIME = 20
+
+-- Make health pack look medical
+healthPack.BrickColor = BrickColor.new("Bright red")
+healthPack.Material = Enum.Material.Neon
+healthPack.Size = Vector3.new(4, 4, 4)
+healthPack.Anchored = true
+
+-- Create medical cross visual elements
+local cross1 = Instance.new("Part")
+cross1.Name = "Cross1"
+cross1.Size = Vector3.new(1, 4, 1)
+cross1.Position = healthPack.Position
+cross1.BrickColor = BrickColor.new("Institutional white")
+cross1.Material = Enum.Material.Neon
+cross1.Anchored = true
+cross1.CanCollide = false
+cross1.Parent = healthPack
+
+local cross2 = Instance.new("Part")
+cross2.Name = "Cross2"
+cross2.Size = Vector3.new(4, 1, 1)
+cross2.Position = healthPack.Position
+cross2.BrickColor = BrickColor.new("Institutional white")
+cross2.Material = Enum.Material.Neon
+cross2.Anchored = true
+cross2.CanCollide = false
+cross2.Parent = healthPack
+
+-- Add healing light effect
+local healLight = Instance.new("PointLight")
+healLight.Parent = healthPack
+healLight.Color = Color3.new(0, 1, 0)
+healLight.Brightness = 2
+healLight.Range = 12
+
+-- Create pulsing glow animation
+local healGlow = TweenService:Create(
+    healLight,
+    TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    {Brightness = 4}
+)
+healGlow:Play()
+
+-- Floating animation for health pack
+local originalPosition = healthPack.Position
+local floatTween = TweenService:Create(
+    healthPack,
+    TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    {Position = originalPosition + Vector3.new(0, 1, 0)}
+)
+floatTween:Play()
+
+-- Also animate the crosses to follow
+local floatCross1 = TweenService:Create(
+    cross1,
+    TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    {Position = cross1.Position + Vector3.new(0, 1, 0)}
+)
+floatCross1:Play()
+
+local floatCross2 = TweenService:Create(
+    cross2,
+    TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    {Position = cross2.Position + Vector3.new(0, 1, 0)}
+)
+floatCross2:Play()
+
+-- Healing function
+local function onTouch(hit)
+    local humanoid = hit.Parent:FindFirstChild("Humanoid")
+    if humanoid and healthPack.Transparency == 0 then
+        -- Only heal if player is not at full health
+        if humanoid.Health < humanoid.MaxHealth then
+            local player = Players:GetPlayerFromCharacter(hit.Parent)
+            if player then
+                
+                -- Calculate healing amount (don't overheal)
+                local actualHealAmount = math.min(HEAL_AMOUNT, humanoid.MaxHealth - humanoid.Health)
+                local newHealth = humanoid.Health + actualHealAmount
+                humanoid.Health = newHealth
+                
+                -- Create healing effect on player
+                local character = player.Character
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    
+                    -- Healing particles
+                    local healEffect = Instance.new("ParticleEmitter")
+                    healEffect.Parent = humanoidRootPart
+                    healEffect.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+                    healEffect.Color = ColorSequence.new(Color3.new(0, 1, 0.5))
+                    healEffect.Lifetime = NumberRange.new(1, 2)
+                    healEffect.Rate = 100
+                    healEffect.SpreadAngle = Vector2.new(45, 45)
+                    healEffect.Speed = NumberRange.new(2, 8)
+                    healEffect.Enabled = true
+                    
+                    -- Healing number display
+                    local healGui = Instance.new("BillboardGui")
+                    healGui.Size = UDim2.new(0, 100, 0, 50)
+                    healGui.StudsOffset = Vector3.new(0, 3, 0)
+                    healGui.Parent = humanoidRootPart
+                    
+                    local healLabel = Instance.new("TextLabel")
+                    healLabel.Size = UDim2.new(1, 0, 1, 0)
+                    healLabel.BackgroundTransparency = 1
+                    healLabel.Text = "+" .. actualHealAmount
+                    healLabel.TextColor3 = Color3.new(0, 1, 0)
+                    healLabel.TextScaled = true
+                    healLabel.Font = Enum.Font.SourceSansBold
+                    healLabel.Parent = healGui
+                    
+                    -- Animate heal text moving up
+                    local healTween = TweenService:Create(
+                        healGui,
+                        TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                        {StudsOffset = Vector3.new(0, 6, 0)}
+                    )
+                    
+                    local healFade = TweenService:Create(
+                        healLabel,
+                        TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                        {TextTransparency = 1}
+                    )
+                    
+                    healTween:Play()
+                    healFade:Play()
+                    
+                    -- Collection animation for health pack
+                    local collectTween = TweenService:Create(
+                        healthPack,
+                        TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+                        {Size = Vector3.new(0, 0, 0), Transparency = 1}
+                    )
+                    collectTween:Play()
+                    
+                    -- Hide crosses too
+                    cross1.Transparency = 1
+                    cross2.Transparency = 1
+                    healthPack.CanCollide = false
+                    
+                    print(player.Name .. " healed for " .. actualHealAmount .. " HP!")
+                    
+                    -- Clean up heal effects
+                    wait(2)
+                    healEffect.Enabled = false
+                    game:GetService("Debris"):AddItem(healGui, 1)
+                    game:GetService("Debris"):AddItem(healEffect, 3)
+                    
+                    -- Respawn health pack after delay
+                    wait(RESPAWN_TIME - 2)
+                    healthPack.Transparency = 0
+                    cross1.Transparency = 0
+                    cross2.Transparency = 0
+                    healthPack.Size = Vector3.new(4, 4, 4)
+                    healthPack.CanCollide = true
+                end
+            end
+        end
+    end
+end
+
+-- Connect the touch event
+healthPack.Touched:Connect(onTouch)
+
+print("Health Pack script loaded for:", healthPack.Name)
