@@ -1,0 +1,303 @@
+-- ===== ENHANCED GUI SCRIPT =====
+-- Place this script in StarterGui as a LOCAL SCRIPT
+-- This creates the main game interface
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Create main GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "GameGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Main HUD Frame
+local hudFrame = Instance.new("Frame")
+hudFrame.Name = "HUDFrame"
+hudFrame.Size = UDim2.new(1, 0, 0, 100)
+hudFrame.Position = UDim2.new(0, 0, 0, 0)
+hudFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+hudFrame.BackgroundTransparency = 0.5
+hudFrame.BorderSizePixel = 0
+hudFrame.Parent = screenGui
+
+-- Coin counter with icon
+local coinFrame = Instance.new("Frame")
+coinFrame.Name = "CoinFrame"
+coinFrame.Size = UDim2.new(0, 200, 0, 60)
+coinFrame.Position = UDim2.new(0, 10, 0, 10)
+coinFrame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+coinFrame.BackgroundTransparency = 0.2
+coinFrame.BorderSizePixel = 2
+coinFrame.BorderColor3 = Color3.new(1, 1, 0)
+coinFrame.Parent = hudFrame
+
+-- Coin icon
+local coinIcon = Instance.new("ImageLabel")
+coinIcon.Name = "CoinIcon"
+coinIcon.Size = UDim2.new(0, 40, 0, 40)
+coinIcon.Position = UDim2.new(0, 10, 0, 10)
+coinIcon.BackgroundTransparency = 1
+coinIcon.Image = "rbxasset://textures/ui/Shell/Icons/RobuxIcon.png"
+coinIcon.ImageColor3 = Color3.new(1, 1, 0)
+coinIcon.Parent = coinFrame
+
+-- Coin label
+local coinLabel = Instance.new("TextLabel")
+coinLabel.Name = "CoinLabel"
+coinLabel.Size = UDim2.new(1, -60, 1, 0)
+coinLabel.Position = UDim2.new(0, 60, 0, 0)
+coinLabel.BackgroundTransparency = 1
+coinLabel.Text = "0"
+coinLabel.TextColor3 = Color3.new(1, 1, 1)
+coinLabel.TextScaled = true
+coinLabel.Font = Enum.Font.SourceSansBold
+coinLabel.TextXAlignment = Enum.TextXAlignment.Left
+coinLabel.Parent = coinFrame
+
+-- Health bar frame
+local healthFrame = Instance.new("Frame")
+healthFrame.Name = "HealthFrame"
+healthFrame.Size = UDim2.new(0, 200, 0, 20)
+healthFrame.Position = UDim2.new(0, 10, 0, 75)
+healthFrame.BackgroundColor3 = Color3.new(0.8, 0, 0)
+healthFrame.BorderSizePixel = 1
+healthFrame.BorderColor3 = Color3.new(1, 1, 1)
+healthFrame.Parent = hudFrame
+
+-- Health bar (fills based on current health)
+local healthBar = Instance.new("Frame")
+healthBar.Name = "HealthBar"
+healthBar.Size = UDim2.new(1, 0, 1, 0)
+healthBar.Position = UDim2.new(0, 0, 0, 0)
+healthBar.BackgroundColor3 = Color3.new(0, 1, 0)
+healthBar.BorderSizePixel = 0
+healthBar.Parent = healthFrame
+
+-- Health text
+local healthText = Instance.new("TextLabel")
+healthText.Name = "HealthText"
+healthText.Size = UDim2.new(1, 0, 1, 0)
+healthText.BackgroundTransparency = 1
+healthText.Text = "100/100"
+healthText.TextColor3 = Color3.new(1, 1, 1)
+healthText.TextScaled = true
+healthText.Font = Enum.Font.SourceSans
+healthText.Parent = healthFrame
+
+-- Lives counter
+local livesFrame = Instance.new("Frame")
+livesFrame.Name = "LivesFrame"
+livesFrame.Size = UDim2.new(0, 150, 0, 60)
+livesFrame.Position = UDim2.new(0, 220, 0, 10)
+livesFrame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+livesFrame.BackgroundTransparency = 0.2
+livesFrame.BorderSizePixel = 2
+livesFrame.BorderColor3 = Color3.new(1, 0, 0)
+livesFrame.Parent = hudFrame
+
+local livesLabel = Instance.new("TextLabel")
+livesLabel.Name = "LivesLabel"
+livesLabel.Size = UDim2.new(1, 0, 1, 0)
+livesLabel.BackgroundTransparency = 1
+livesLabel.Text = "Lives: 3"
+livesLabel.TextColor3 = Color3.new(1, 0.5, 0.5)
+livesLabel.TextScaled = true
+livesLabel.Font = Enum.Font.SourceSansBold
+livesLabel.Parent = livesFrame
+
+-- Power-up indicator (shows when power-ups are active)
+local powerUpFrame = Instance.new("Frame")
+powerUpFrame.Name = "PowerUpFrame"
+powerUpFrame.Size = UDim2.new(0, 250, 0, 50)
+powerUpFrame.Position = UDim2.new(1, -260, 0, 10)
+powerUpFrame.BackgroundColor3 = Color3.new(0.5, 0, 1)
+powerUpFrame.BackgroundTransparency = 0.3
+powerUpFrame.BorderSizePixel = 2
+powerUpFrame.BorderColor3 = Color3.new(1, 1, 1)
+powerUpFrame.Visible = false
+powerUpFrame.Parent = hudFrame
+
+local powerUpLabel = Instance.new("TextLabel")
+powerUpLabel.Name = "PowerUpLabel"
+powerUpLabel.Size = UDim2.new(1, 0, 1, 0)
+powerUpLabel.BackgroundTransparency = 1
+powerUpLabel.Text = "Power-up Active!"
+powerUpLabel.TextColor3 = Color3.new(1, 1, 1)
+powerUpLabel.TextScaled = true
+powerUpLabel.Font = Enum.Font.SourceSansBold
+powerUpLabel.Parent = powerUpFrame
+
+-- Mini-map frame
+local miniMapFrame = Instance.new("Frame")
+miniMapFrame.Name = "MiniMapFrame"
+miniMapFrame.Size = UDim2.new(0, 150, 0, 150)
+miniMapFrame.Position = UDim2.new(1, -160, 0, 110)
+miniMapFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+miniMapFrame.BackgroundTransparency = 0.3
+miniMapFrame.BorderSizePixel = 2
+miniMapFrame.BorderColor3 = Color3.new(1, 1, 1)
+miniMapFrame.Parent = screenGui
+
+local miniMapLabel = Instance.new("TextLabel")
+miniMapLabel.Name = "MiniMapLabel"
+miniMapLabel.Size = UDim2.new(1, 0, 0.3, 0)
+miniMapLabel.Position = UDim2.new(0, 0, 0, 0)
+miniMapLabel.BackgroundTransparency = 1
+miniMapLabel.Text = "MINI-MAP"
+miniMapLabel.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+miniMapLabel.TextScaled = true
+miniMapLabel.Font = Enum.Font.SourceSans
+miniMapLabel.Parent = miniMapFrame
+
+-- Player dot on minimap
+local playerDot = Instance.new("Frame")
+playerDot.Name = "PlayerDot"
+playerDot.Size = UDim2.new(0, 6, 0, 6)
+playerDot.Position = UDim2.new(0.5, -3, 0.5, -3)
+playerDot.BackgroundColor3 = Color3.new(0, 1, 0)
+playerDot.BorderSizePixel = 0
+playerDot.Parent = miniMapFrame
+
+-- Make player dot circular
+local playerDotCorner = Instance.new("UICorner")
+playerDotCorner.CornerRadius = UDim.new(1, 0)
+playerDotCorner.Parent = playerDot
+
+-- Game info panel (shows tips and controls)
+local infoFrame = Instance.new("Frame")
+infoFrame.Name = "InfoFrame"
+infoFrame.Size = UDim2.new(0, 300, 0, 120)
+infoFrame.Position = UDim2.new(0, 10, 1, -130)
+infoFrame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+infoFrame.BackgroundTransparency = 0.3
+infoFrame.BorderSizePixel = 2
+infoFrame.BorderColor3 = Color3.new(0.5, 0.5, 0.5)
+infoFrame.Parent = screenGui
+
+local infoLabel = Instance.new("TextLabel")
+infoLabel.Name = "InfoLabel"
+infoLabel.Size = UDim2.new(1, -10, 1, -10)
+infoLabel.Position = UDim2.new(0, 5, 0, 5)
+infoLabel.BackgroundTransparency = 1
+infoLabel.Text = "🎮 CONTROLS:\nWASD - Move\nSpace - Jump\nB - Open Shop\n\n💡 TIP: Collect coins and power-ups!"
+infoLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+infoLabel.TextScaled = true
+infoLabel.Font = Enum.Font.SourceSans
+infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+infoLabel.TextYAlignment = Enum.TextYAlignment.Top
+infoLabel.Parent = infoFrame
+
+-- Update functions
+local function updateCoins()
+    if player.leaderstats and player.leaderstats:FindFirstChild("Coins") then
+        local coinValue = player.leaderstats.Coins.Value
+        coinLabel.Text = tostring(coinValue)
+        
+        -- Coin collection animation
+        local scaleTween = TweenService:Create(
+            coinFrame,
+            TweenInfo.new(0.2, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out),
+            {Size = UDim2.new(0, 220, 0, 65)}
+        )
+        scaleTween:Play()
+        
+        scaleTween.Completed:Connect(function()
+            local resetTween = TweenService:Create(
+                coinFrame,
+                TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                {Size = UDim2.new(0, 200, 0, 60)}
+            )
+            resetTween:Play()
+        end)
+    end
+end
+
+local function updateHealth()
+    if player.Character and player.Character:FindFirstChild("Humanoid") then
+        local humanoid = player.Character.Humanoid
+        local healthPercent = humanoid.Health / humanoid.MaxHealth
+        
+        -- Update health bar size
+        healthBar.Size = UDim2.new(healthPercent, 0, 1, 0)
+        healthText.Text = math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth)
+        
+        -- Change health bar color based on health percentage
+        if healthPercent > 0.7 then
+            healthBar.BackgroundColor3 = Color3.new(0, 1, 0) -- Green
+        elseif healthPercent > 0.3 then
+            healthBar.BackgroundColor3 = Color3.new(1, 1, 0) -- Yellow
+        else
+            healthBar.BackgroundColor3 = Color3.new(1, 0, 0) -- Red
+        end
+    end
+end
+
+local function updateLives()
+    if player.leaderstats and player.leaderstats:FindFirstChild("Lives") then
+        livesLabel.Text = "Lives: " .. player.leaderstats.Lives.Value
+    end
+end
+
+-- Show power-up notification
+local function showPowerUpNotification(powerUpName, duration)
+    powerUpLabel.Text = powerUpName .. " Active!"
+    powerUpFrame.Visible = true
+    
+    -- Slide in animation
+    powerUpFrame.Position = UDim2.new(1, 0, 0, 10)
+    local slideIn = TweenService:Create(
+        powerUpFrame,
+        TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+        {Position = UDim2.new(1, -260, 0, 10)}
+    )
+    slideIn:Play()
+    
+    -- Auto-hide after duration
+    spawn(function()
+        wait(duration)
+        local slideOut = TweenService:Create(
+            powerUpFrame,
+            TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+            {Position = UDim2.new(1, 0, 0, 10)}
+        )
+        slideOut:Play()
+        
+        slideOut.Completed:Connect(function()
+            powerUpFrame.Visible = false
+        end)
+    end)
+end
+
+-- Connect update functions to player events
+player.ChildAdded:Connect(function(child)
+    if child.Name == "leaderstats" then
+        wait(0.1) -- Small delay to ensure values are set
+        local coins = child:WaitForChild("Coins")
+        local lives = child:WaitForChild("Lives")
+        
+        coins.Changed:Connect(updateCoins)
+        lives.Changed:Connect(updateLives)
+        
+        -- Initial update
+        updateCoins()
+        updateLives()
+    end
+end)
+
+player.CharacterAdded:Connect(function(character)
+    local humanoid = character:WaitForChild("Humanoid")
+    humanoid.HealthChanged:Connect(updateHealth)
+    updateHealth()
+end)
+
+-- Update minimap player position
+RunService.Heartbeat:Connect(function()
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local position
