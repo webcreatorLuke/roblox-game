@@ -1,0 +1,102 @@
+-- ===== CHECKPOINT SCRIPT =====
+-- Place this script inside checkpoint parts as a SERVER SCRIPT
+-- This saves player progress and serves as respawn points
+
+local checkpoint = script.Parent
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+-- Checkpoint appearance
+checkpoint.BrickColor = BrickColor.new("Bright green")
+checkpoint.Material = Enum.Material.Neon
+checkpoint.Size = Vector3.new(8, 8, 2)
+checkpoint.Anchored = true
+
+-- Add checkpoint lighting
+local checkpointLight = Instance.new("PointLight")
+checkpointLight.Parent = checkpoint
+checkpointLight.Color = Color3.new(0, 1, 0)
+checkpointLight.Brightness = 2
+checkpointLight.Range = 15
+
+-- Create checkpoint beacon effect
+local beaconTween = TweenService:Create(
+    checkpointLight,
+    TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    {Brightness = 4}
+)
+
+-- Track which players have activated this checkpoint
+local activatedCheckpoints = {}
+
+-- Checkpoint activation function
+local function onTouch(hit)
+    local humanoid = hit.Parent:FindFirstChild("Humanoid")
+    if humanoid then
+        local player = Players:GetPlayerFromCharacter(hit.Parent)
+        if player and not activatedCheckpoints[player] then
+            
+            -- Mark checkpoint as activated for this player
+            activatedCheckpoints[player] = true
+            
+            -- Visual activation feedback
+            checkpoint.BrickColor = BrickColor.new("Lime green")
+            beaconTween:Play()
+            
+            -- Create activation particles
+            local activationEffect = Instance.new("ParticleEmitter")
+            activationEffect.Parent = checkpoint
+            activationEffect.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+            activationEffect.Color = ColorSequence.new(Color3.new(0, 1, 0))
+            activationEffect.Lifetime = NumberRange.new(1, 2)
+            activationEffect.Rate = 100
+            activationEffect.SpreadAngle = Vector2.new(360, 360)
+            activationEffect.Speed = NumberRange.new(10, 20)
+            activationEffect.Enabled = true
+            
+            -- Set as respawn location
+            if player.Character then
+                local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    -- Create invisible spawn location
+                    local spawnLocation = Instance.new("SpawnLocation")
+                    spawnLocation.Name = player.Name .. "_Checkpoint"
+                    spawnLocation.CFrame = CFrame.new(checkpoint.Position + Vector3.new(0, 5, 0))
+                    spawnLocation.Transparency = 1
+                    spawnLocation.CanCollide = false
+                    spawnLocation.Anchored = true
+                    spawnLocation.TeamColor = player.TeamColor
+                    spawnLocation.Parent = game.Workspace
+                    
+                    -- Set as player's respawn location
+                    player.RespawnLocation = spawnLocation
+                end
+            end
+            
+            -- Stop activation effect after 2 seconds
+            wait(2)
+            activationEffect.Enabled = false
+            game:GetService("Debris"):AddItem(activationEffect, 3)
+            
+            print(player.Name .. " activated checkpoint:", checkpoint.Name)
+        end
+    end
+end
+
+-- Clean up when players leave
+Players.PlayerRemoving:Connect(function(player)
+    if activatedCheckpoints[player] then
+        activatedCheckpoints[player] = nil
+        
+        -- Remove player's custom spawn location
+        local customSpawn = game.Workspace:FindFirstChild(player.Name .. "_Checkpoint")
+        if customSpawn then
+            customSpawn:Destroy()
+        end
+    end
+end)
+
+-- Connect the touch event
+checkpoint.Touched:Connect(onTouch)
+
+print("Checkpoint script loaded for:", checkpoint.Name)
