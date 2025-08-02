@@ -1,0 +1,146 @@
+-- ===== DANGER ZONE SCRIPT =====
+-- Place this script inside danger/lava parts as a SERVER SCRIPT
+-- This deals damage to players who touch it
+
+local dangerZone = script.Parent
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+-- Damage settings
+local DAMAGE_AMOUNT = 20
+local DAMAGE_COOLDOWN = 1 -- seconds between damage ticks
+
+-- Make danger zone look dangerous
+dangerZone.BrickColor = BrickColor.new("Really red")
+dangerZone.Material = Enum.Material.Lava
+dangerZone.Anchored = true
+
+-- Add dangerous lighting
+local dangerLight = Instance.new("PointLight")
+dangerLight.Parent = dangerZone
+dangerLight.Color = Color3.new(1, 0, 0)
+dangerLight.Brightness = 2
+dangerLight.Range = 15
+
+-- Create flickering effect
+local flickerTween = TweenService:Create(
+    dangerLight,
+    TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    {Brightness = 4}
+)
+flickerTween:Play()
+
+-- Add danger particles
+local dangerEffect = Instance.new("ParticleEmitter")
+dangerEffect.Parent = dangerZone
+dangerEffect.Texture = "rbxasset://textures/particles/fire_main.dds"
+dangerEffect.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.new(1, 1, 0)),
+    ColorSequenceKeypoint.new(0.5, Color3.new(1, 0.5, 0)),
+    ColorSequenceKeypoint.new(1, Color3.new(1, 0, 0))
+}
+dangerEffect.Lifetime = NumberRange.new(1, 2)
+dangerEffect.Rate = 30
+dangerEffect.SpreadAngle = Vector2.new(45, 45)
+dangerEffect.Speed = NumberRange.new(5, 15)
+
+-- Track last damage time for each player to prevent spam
+local lastDamage = {}
+
+-- Damage function
+local function onTouch(hit)
+    local humanoid = hit.Parent:FindFirstChild("Humanoid")
+    if humanoid then
+        local player = Players:GetPlayerFromCharacter(hit.Parent)
+        if player then
+            local currentTime = tick()
+            
+            -- Check if enough time has passed since last damage
+            if not lastDamage[player] or currentTime - lastDamage[player] > DAMAGE_COOLDOWN then
+                lastDamage[player] = currentTime
+                
+                -- Deal damage
+                humanoid.Health = humanoid.Health - DAMAGE_AMOUNT
+                
+                -- Create damage effect on player
+                local character = player.Character
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    
+                    -- Damage particles
+                    local damageParticles = Instance.new("ParticleEmitter")
+                    damageParticles.Parent = humanoidRootPart
+                    damageParticles.Texture = "rbxasset://textures/particles/fire_main.dds"
+                    damageParticles.Color = ColorSequence.new(Color3.new(1, 0, 0))
+                    damageParticles.Lifetime = NumberRange.new(0.5, 1)
+                    damageParticles.Rate = 50
+                    damageParticles.Enabled = true
+                    
+                    -- Damage number display
+                    local damageGui = Instance.new("BillboardGui")
+                    damageGui.Size = UDim2.new(0, 100, 0, 50)
+                    damageGui.StudsOffset = Vector3.new(0, 3, 0)
+                    damageGui.Parent = humanoidRootPart
+                    
+                    local damageLabel = Instance.new("TextLabel")
+                    damageLabel.Size = UDim2.new(1, 0, 1, 0)
+                    damageLabel.BackgroundTransparency = 1
+                    damageLabel.Text = "-" .. DAMAGE_AMOUNT
+                    damageLabel.TextColor3 = Color3.new(1, 0, 0)
+                    damageLabel.TextScaled = true
+                    damageLabel.Font = Enum.Font.SourceSansBold
+                    damageLabel.Parent = damageGui
+                    
+                    -- Animate damage text moving up and fading
+                    local damageTween = TweenService:Create(
+                        damageGui,
+                        TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                        {StudsOffset = Vector3.new(0, 6, 0)}
+                    )
+                    
+                    local fadeTween = TweenService:Create(
+                        damageLabel,
+                        TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                        {TextTransparency = 1}
+                    )
+                    
+                    damageTween:Play()
+                    fadeTween:Play()
+                    
+                    -- Screen shake effect (visual feedback)
+                    local shakeIntensity = 2
+                    local originalCFrame = humanoidRootPart.CFrame
+                    for i = 1, 10 do
+                        humanoidRootPart.CFrame = originalCFrame * CFrame.new(
+                            math.random(-shakeIntensity, shakeIntensity),
+                            0,
+                            math.random(-shakeIntensity, shakeIntensity)
+                        )
+                        wait(0.05)
+                    end
+                    humanoidRootPart.CFrame = originalCFrame
+                    
+                    -- Clean up effects
+                    wait(1)
+                    damageParticles.Enabled = false
+                    game:GetService("Debris"):AddItem(damageGui, 1)
+                    game:GetService("Debris"):AddItem(damageParticles, 2)
+                    
+                    print(player.Name .. " took " .. DAMAGE_AMOUNT .. " damage from danger zone!")
+                end
+            end
+        end
+    end
+end
+
+-- Clean up player data when they leave
+Players.PlayerRemoving:Connect(function(player)
+    if lastDamage[player] then
+        lastDamage[player] = nil
+    end
+end)
+
+-- Connect the touch event
+dangerZone.Touched:Connect(onTouch)
+
+print("Danger Zone script loaded for:", dangerZone.Name)
