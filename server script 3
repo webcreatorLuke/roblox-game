@@ -1,1 +1,99 @@
+-- ===== SPEED BOOST POWER-UP SCRIPT =====
+-- Place this script inside speed boost power-up parts as a SERVER SCRIPT
+-- This gives players temporary speed increases
 
+local powerUp = script.Parent
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+-- Power-up settings
+local SPEED_MULTIPLIER = 2
+local BOOST_DURATION = 10
+local RESPAWN_TIME = 30
+
+-- Make power-up look attractive
+powerUp.BrickColor = BrickColor.new("Bright blue")
+powerUp.Material = Enum.Material.ForceField
+powerUp.Shape = Enum.PartType.Ball
+powerUp.Size = Vector3.new(6, 6, 6)
+
+-- Add glowing effect
+local pointLight = Instance.new("PointLight")
+pointLight.Parent = powerUp
+pointLight.Color = Color3.new(0, 0.5, 1)
+pointLight.Brightness = 2
+pointLight.Range = 15
+
+-- Create pulsing glow animation
+local glowTween = TweenService:Create(
+    pointLight,
+    TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    {Brightness = 4}
+)
+glowTween:Play()
+
+-- Floating animation
+local originalPosition = powerUp.Position
+local floatTween = TweenService:Create(
+    powerUp,
+    TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    {Position = originalPosition + Vector3.new(0, 3, 0)}
+)
+floatTween:Play()
+
+-- Power-up collection function
+local function onTouch(hit)
+    local humanoid = hit.Parent:FindFirstChild("Humanoid")
+    if humanoid and powerUp.Transparency == 0 then
+        local player = Players:GetPlayerFromCharacter(hit.Parent)
+        if player then
+            
+            -- Apply speed boost
+            local originalSpeed = humanoid.WalkSpeed
+            humanoid.WalkSpeed = originalSpeed * SPEED_MULTIPLIER
+            
+            -- Create speed effect particles
+            local character = player.Character
+            local speedEffect = Instance.new("ParticleEmitter")
+            speedEffect.Parent = character:FindFirstChild("HumanoidRootPart")
+            speedEffect.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+            speedEffect.Color = ColorSequence.new(Color3.new(0, 0.5, 1))
+            speedEffect.Lifetime = NumberRange.new(0.5, 1.5)
+            speedEffect.Rate = 50
+            speedEffect.SpreadAngle = Vector2.new(45, 45)
+            
+            -- Visual feedback on power-up
+            local collectTween = TweenService:Create(
+                powerUp,
+                TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                {Size = Vector3.new(0, 0, 0), Transparency = 1}
+            )
+            collectTween:Play()
+            
+            -- Hide power-up
+            powerUp.CanCollide = false
+            
+            print(player.Name .. " got speed boost!")
+            
+            -- Remove boost after duration
+            wait(BOOST_DURATION)
+            humanoid.WalkSpeed = originalSpeed
+            if speedEffect then
+                speedEffect:Destroy()
+            end
+            
+            print(player.Name .. "'s speed boost ended")
+            
+            -- Respawn power-up
+            wait(RESPAWN_TIME - BOOST_DURATION)
+            powerUp.Transparency = 0
+            powerUp.Size = Vector3.new(6, 6, 6)
+            powerUp.CanCollide = true
+        end
+    end
+end
+
+-- Connect the touch event
+powerUp.Touched:Connect(onTouch)
+
+print("Speed Boost script loaded for:", powerUp.Name)
