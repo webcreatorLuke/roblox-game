@@ -1,0 +1,326 @@
+-- ===== SHOP SYSTEM SCRIPT =====
+-- Place this script in ServerScriptService
+-- This manages the in-game shop and item purchases
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Wait for RemoteEvents folder
+local remoteEvents = ReplicatedStorage:WaitForChild("RemoteEvents")
+
+-- Create shop RemoteEvents
+local shopPurchase = Instance.new("RemoteFunction")
+shopPurchase.Name = "ShopPurchase"
+shopPurchase.Parent = remoteEvents
+
+local shopData = Instance.new("RemoteFunction")
+shopData.Name = "ShopData"
+shopData.Parent = remoteEvents
+
+-- Shop items configuration
+local shopItems = {
+    {
+        id = "extra_life",
+        name = "Extra Life",
+        description = "Gain an additional life",
+        price = 100,
+        category = "utilities",
+        icon = "❤️"
+    },
+    {
+        id = "speed_upgrade",
+        name = "Permanent Speed Boost",
+        description = "Increases your base speed permanently by 5",
+        price = 500,
+        category = "upgrades",
+        icon = "⚡"
+    },
+    {
+        id = "jump_upgrade",
+        name = "Permanent Jump Boost", 
+        description = "Increases your jump power permanently by 20",
+        price = 300,
+        category = "upgrades",
+        icon = "🦘"
+    },
+    {
+        id = "coin_magnet",
+        name = "Coin Magnet",
+        description = "Automatically attract nearby coins for 60 seconds",
+        price = 250,
+        category = "utilities",
+        icon = "🧲"
+    },
+    {
+        id = "shield",
+        name = "Damage Shield",
+        description = "Protects from all damage for 30 seconds",
+        price = 150,
+        category = "utilities",
+        icon = "🛡️"
+    },
+    {
+        id = "double_coins",
+        name = "Double Coins",
+        description = "Earn 2x coins for the next 5 minutes",
+        price = 200,
+        category = "utilities",
+        icon = "💰"
+    }
+}
+
+-- Player purchases tracking
+local playerPurchases = {}
+local playerActiveEffects = {}
+
+-- Initialize player data
+Players.PlayerAdded:Connect(function(player)
+    playerPurchases[player] = {}
+    playerActiveEffects[player] = {}
+end)
+
+-- Clean up player data
+Players.PlayerRemoving:Connect(function(player)
+    playerPurchases[player] = nil
+    playerActiveEffects[player] = nil
+end)
+
+-- Handle shop data requests
+shopData.OnServerInvoke = function(player)
+    return shopItems
+end
+
+-- Handle purchase requests
+shopPurchase.OnServerInvoke = function(player, itemId)
+    if not player.leaderstats or not player.leaderstats:FindFirstChild("Coins") then
+        return {success = false, message = "No coin data found"}
+    end
+    
+    -- Find the item
+    local item = nil
+    for _, shopItem in pairs(shopItems) do
+        if shopItem.id == itemId then
+            item = shopItem
+            break
+        end
+    end
+    
+    if not item then
+        return {success = false, message = "Item not found"}
+    end
+    
+    -- Check if player has enough coins
+    if player.leaderstats.Coins.Value < item.price then
+        return {success = false, message = "Not enough coins"}
+    end
+    
+    -- Check if already purchased (for permanent upgrades)
+    if playerPurchases[player][itemId] and item.category == "upgrades" then
+        return {success = false, message = "Already purchased"}
+    end
+    
+    -- Process the purchase
+    player.leaderstats.Coins.Value = player.leaderstats.Coins.Value - item.price
+    playerPurchases[player][itemId] = true
+    
+    -- Apply item effects
+    local success = applyItemEffect(player, item)
+    
+    if success then
+        print(player.Name .. " purchased " .. item.name .. " for " .. item.price .. " coins")
+        return {success = true, message = "Purchase successful!"}
+    else
+        -- Refund on failure
+        player.leaderstats.Coins.Value = player.leaderstats.Coins.Value + item.price
+        playerPurchases[player][itemId] = nil
+        return {success = false, message = "Failed to apply item effect"}
+    end
+end)
+
+-- Apply item effects function
+function applyItemEffect(player, item)
+    local character = player.Character
+    if not character then return false end
+    
+    if item.id == "extra_life" then
+        if player.leaderstats:FindFirstChild("Lives") then
+            player.leaderstats.Lives.Value = player.leaderstats.Lives.Value + 1
+            return true
+        end
+        
+    elseif item.id == "speed_upgrade" then
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = humanoid.WalkSpeed + 5
+            return true
+        end
+        
+    elseif item.id == "jump_upgrade" then
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.JumpPower = humanoid.JumpPower + 20
+            return true
+        end
+        
+    elseif item.id == "coin_magnet" then
+        -- Apply coin magnet effect
+        playerActiveEffects[player]["coin_magnet"] = tick() + 60 -- 60 seconds
+        createCoinMagnetEffect(player, 60)
+        return true
+        
+    elseif item.id == "shield" then
+        -- Apply damage shield
+        playerActiveEffects[player]["shield"] = tick() + 30 -- 30 seconds
+        createShieldEffect(player, 30)
+        return true
+        
+    elseif item.id == "double_coins" then
+        -- Apply double coins effect
+        playerActiveEffects[player]["double_coins"] = tick() + 300 -- 5 minutes
+        createDoubleCoinEffect(player, 300)
+        return true
+    end
+    
+    return false
+end
+
+-- Coin magnet effect
+function createCoinMagnetEffect(player, duration)
+    local character = player.Character
+    if not character then return end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+    
+    -- Visual effect
+    local magnetEffect = Instance.new("ParticleEmitter")
+    magnetEffect.Parent = humanoidRootPart
+    magnetEffect.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+    magnetEffect.Color = ColorSequence.new(Color3.new(1, 1, 0))
+    magnetEffect.Lifetime = NumberRange.new(1, 2)
+    magnetEffect.Rate = 20
+    magnetEffect.SpreadAngle = Vector2.new(360, 360)
+    
+    -- Magnet logic
+    local magnetConnection
+    magnetConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not player.Character or not playerActiveEffects[player]["coin_magnet"] or 
+           tick() > playerActiveEffects[player]["coin_magnet"] then
+            magnetConnection:Disconnect()
+            if magnetEffect then magnetEffect:Destroy() end
+            return
+        end
+        
+        -- Find nearby coins and attract them
+        for _, obj in pairs(game.Workspace:GetChildren()) do
+            if obj.Name:find("Coin") and obj:IsA("BasePart") then
+                local distance = (obj.Position - humanoidRootPart.Position).Magnitude
+                if distance <= 20 then -- Magnet range
+                    local direction = (humanoidRootPart.Position - obj.Position).Unit
+                    local bodyVelocity = obj:FindFirstChild("BodyVelocity")
+                    if not bodyVelocity then
+                        bodyVelocity = Instance.new("BodyVelocity")
+                        bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+                        bodyVelocity.Parent = obj
+                    end
+                    bodyVelocity.Velocity = direction * 25
+                end
+            end
+        end
+    end)
+    
+    print(player.Name .. " activated coin magnet for " .. duration .. " seconds")
+end
+
+-- Shield effect
+function createShieldEffect(player, duration)
+    local character = player.Character
+    if not character then return end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+    
+    -- Create shield visual
+    local shield = Instance.new("Part")
+    shield.Name = "Shield"
+    shield.Size = Vector3.new(8, 8, 8)
+    shield.Shape = Enum.PartType.Ball
+    shield.Material = Enum.Material.ForceField
+    shield.BrickColor = BrickColor.new("Cyan")
+    shield.Transparency = 0.7
+    shield.CanCollide = false
+    shield.Anchored = true
+    shield.Parent = character
+    
+    -- Shield particles
+    local shieldEffect = Instance.new("ParticleEmitter")
+    shieldEffect.Parent = shield
+    shieldEffect.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+    shieldEffect.Color = ColorSequence.new(Color3.new(0, 1, 1))
+    shieldEffect.Lifetime = NumberRange.new(0.5, 1)
+    shieldEffect.Rate = 30
+    
+    -- Position shield around player
+    local shieldConnection
+    shieldConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not player.Character or not playerActiveEffects[player]["shield"] or
+           tick() > playerActiveEffects[player]["shield"] then
+            shieldConnection:Disconnect()
+            if shield then shield:Destroy() end
+            return
+        end
+        
+        shield.CFrame = humanoidRootPart.CFrame
+    end)
+    
+    print(player.Name .. " activated damage shield for " .. duration .. " seconds")
+end
+
+-- Double coins effect
+function createDoubleCoinEffect(player, duration)
+    local character = player.Character
+    if not character then return end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+    
+    -- Visual effect
+    local coinEffect = Instance.new("ParticleEmitter")
+    coinEffect.Parent = humanoidRootPart
+    coinEffect.Texture = "rbxasset://textures/ui/Shell/Icons/RobuxIcon.png"
+    coinEffect.Color = ColorSequence.new(Color3.new(1, 1, 0))
+    coinEffect.Lifetime = NumberRange.new(1, 2)
+    coinEffect.Rate = 15
+    coinEffect.SpreadAngle = Vector2.new(45, 45)
+    
+    -- Clean up effect when expired
+    spawn(function()
+        wait(duration)
+        if coinEffect then coinEffect:Destroy() end
+    end)
+    
+    print(player.Name .. " activated double coins for " .. duration .. " seconds")
+end
+
+-- Check if player has shield active (used by damage scripts)
+function hasShield(player)
+    return playerActiveEffects[player] and 
+           playerActiveEffects[player]["shield"] and 
+           tick() < playerActiveEffects[player]["shield"]
+end
+
+-- Get coin multiplier (used by coin collection scripts)
+function getCoinMultiplier(player)
+    if playerActiveEffects[player] and 
+       playerActiveEffects[player]["double_coins"] and 
+       tick() < playerActiveEffects[player]["double_coins"] then
+        return 2
+    end
+    return 1
+end
+
+-- Make functions global so other scripts can use them
+_G.HasShield = hasShield
+_G.GetCoinMultiplier = getCoinMultiplier
+
+print("Shop System loaded successfully!")
