@@ -1,0 +1,351 @@
+-- ===== SHOP GUI SCRIPT =====
+-- Place this script in StarterGui as a LOCAL SCRIPT  
+-- This creates the shop interface that players can use
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Wait for RemoteEvents
+local remoteEvents = ReplicatedStorage:WaitForChild("RemoteEvents")
+local shopPurchase = remoteEvents:WaitForChild("ShopPurchase")
+local shopData = remoteEvents:WaitForChild("ShopData")
+
+-- Create shop GUI
+local shopGui = Instance.new("ScreenGui")
+shopGui.Name = "ShopGUI"
+shopGui.ResetOnSpawn = false
+shopGui.Parent = playerGui
+
+-- Main shop frame
+local shopFrame = Instance.new("Frame")
+shopFrame.Name = "ShopFrame"
+shopFrame.Size = UDim2.new(0, 700, 0, 500)
+shopFrame.Position = UDim2.new(0.5, -350, 0.5, -250)
+shopFrame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+shopFrame.BorderSizePixel = 3
+shopFrame.BorderColor3 = Color3.new(1, 1, 1)
+shopFrame.Visible = false
+shopFrame.Parent = shopGui
+
+-- Add rounded corners to shop frame
+local shopCorner = Instance.new("UICorner")
+shopCorner.CornerRadius = UDim.new(0, 15)
+shopCorner.Parent = shopFrame
+
+-- Shop title bar
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 60)
+titleBar.Position = UDim2.new(0, 0, 0, 0)
+titleBar.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+titleBar.BorderSizePixel = 0
+titleBar.Parent = shopFrame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 15)
+titleCorner.Parent = titleBar
+
+-- Shop title text
+local shopTitle = Instance.new("TextLabel")
+shopTitle.Name = "ShopTitle"
+shopTitle.Size = UDim2.new(1, -60, 1, 0)
+shopTitle.Position = UDim2.new(0, 10, 0, 0)
+shopTitle.BackgroundTransparency = 1
+shopTitle.Text = "🛒 ITEM SHOP 🛒"
+shopTitle.TextColor3 = Color3.new(1, 1, 1)
+shopTitle.TextScaled = true
+shopTitle.Font = Enum.Font.SourceSansBold
+shopTitle.TextXAlignment = Enum.TextXAlignment.Left
+shopTitle.Parent = titleBar
+
+-- Close button
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 40, 0, 40)
+closeButton.Position = UDim2.new(1, -50, 0, 10)
+closeButton.BackgroundColor3 = Color3.new(1, 0, 0)
+closeButton.Text = "✖"
+closeButton.TextColor3 = Color3.new(1, 1, 1)
+closeButton.TextScaled = true
+closeButton.Font = Enum.Font.SourceSansBold
+closeButton.Parent = titleBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(1, 0)
+closeCorner.Parent = closeButton
+
+-- Player coins display
+local coinsDisplay = Instance.new("Frame")
+coinsDisplay.Name = "CoinsDisplay"
+coinsDisplay.Size = UDim2.new(0, 200, 0, 40)
+coinsDisplay.Position = UDim2.new(0, 10, 0, 70)
+coinsDisplay.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+coinsDisplay.BorderSizePixel = 0
+coinsDisplay.Parent = shopFrame
+
+local coinsCorner = Instance.new("UICorner")
+coinsCorner.CornerRadius = UDim.new(0, 10)
+coinsCorner.Parent = coinsDisplay
+
+local coinsLabel = Instance.new("TextLabel")
+coinsLabel.Name = "CoinsLabel"
+coinsLabel.Size = UDim2.new(1, -10, 1, 0)
+coinsLabel.Position = UDim2.new(0, 5, 0, 0)
+coinsLabel.BackgroundTransparency = 1
+coinsLabel.Text = "💰 Your Coins: 0"
+coinsLabel.TextColor3 = Color3.new(1, 1, 0)
+coinsLabel.TextScaled = true
+coinsLabel.Font = Enum.Font.SourceSansBold
+coinsLabel.TextXAlignment = Enum.TextXAlignment.Left
+coinsLabel.Parent = coinsDisplay
+
+-- Scroll frame for shop items
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Name = "ItemScrollFrame"
+scrollFrame.Size = UDim2.new(1, -20, 1, -130)
+scrollFrame.Position = UDim2.new(0, 10, 0, 120)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.ScrollBarThickness = 8
+scrollFrame.ScrollBarImageColor3 = Color3.new(0.5, 0.5, 0.5)
+scrollFrame.Parent = shopFrame
+
+-- Shop functions
+local function updateCoinsDisplay()
+    if player.leaderstats and player.leaderstats:FindFirstChild("Coins") then
+        coinsLabel.Text = "💰 Your Coins: " .. player.leaderstats.Coins.Value
+    end
+end
+
+local function createItemFrame(item, index)
+    local itemFrame = Instance.new("Frame")
+    itemFrame.Name = "Item_" .. item.id
+    itemFrame.Size = UDim2.new(1, -16, 0, 100)
+    itemFrame.Position = UDim2.new(0, 0, 0, (index-1) * 110)
+    itemFrame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+    itemFrame.BorderSizePixel = 2
+    itemFrame.BorderColor3 = Color3.new(0.5, 0.5, 0.5)
+    itemFrame.Parent = scrollFrame
+    
+    local itemCorner = Instance.new("UICorner")
+    itemCorner.CornerRadius = UDim.new(0, 10)
+    itemCorner.Parent = itemFrame
+    
+    -- Item icon
+    local itemIcon = Instance.new("TextLabel")
+    itemIcon.Name = "ItemIcon"
+    itemIcon.Size = UDim2.new(0, 60, 0, 60)
+    itemIcon.Position = UDim2.new(0, 10, 0, 20)
+    itemIcon.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+    itemIcon.Text = item.icon or "🎁"
+    itemIcon.TextColor3 = Color3.new(1, 1, 1)
+    itemIcon.TextScaled = true
+    itemIcon.Font = Enum.Font.SourceSansBold
+    itemIcon.Parent = itemFrame
+    
+    local iconCorner = Instance.new("UICorner")
+    iconCorner.CornerRadius = UDim.new(0, 10)
+    iconCorner.Parent = itemIcon
+    
+    -- Item name
+    local itemName = Instance.new("TextLabel")
+    itemName.Name = "ItemName"
+    itemName.Size = UDim2.new(0, 300, 0, 30)
+    itemName.Position = UDim2.new(0, 80, 0, 10)
+    itemName.BackgroundTransparency = 1
+    itemName.Text = item.name
+    itemName.TextColor3 = Color3.new(1, 1, 1)
+    itemName.TextScaled = true
+    itemName.Font = Enum.Font.SourceSansBold
+    itemName.TextXAlignment = Enum.TextXAlignment.Left
+    itemName.Parent = itemFrame
+    
+    -- Item description
+    local itemDesc = Instance.new("TextLabel")
+    itemDesc.Name = "ItemDescription"
+    itemDesc.Size = UDim2.new(0, 300, 0, 40)
+    itemDesc.Position = UDim2.new(0, 80, 0, 40)
+    itemDesc.BackgroundTransparency = 1
+    itemDesc.Text = item.description
+    itemDesc.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+    itemDesc.TextScaled = true
+    itemDesc.Font = Enum.Font.SourceSans
+    itemDesc.TextXAlignment = Enum.TextXAlignment.Left
+    itemDesc.TextWrapped = true
+    itemDesc.Parent = itemFrame
+    
+    -- Price label
+    local priceLabel = Instance.new("TextLabel")
+    priceLabel.Name = "PriceLabel"
+    priceLabel.Size = UDim2.new(0, 120, 0, 30)
+    priceLabel.Position = UDim2.new(1, -230, 0, 10)
+    priceLabel.BackgroundTransparency = 1
+    priceLabel.Text = "💰 " .. item.price .. " coins"
+    priceLabel.TextColor3 = Color3.new(1, 1, 0)
+    priceLabel.TextScaled = true
+    priceLabel.Font = Enum.Font.SourceSansBold
+    priceLabel.Parent = itemFrame
+    
+    -- Buy button
+    local buyButton = Instance.new("TextButton")
+    buyButton.Name = "BuyButton"
+    buyButton.Size = UDim2.new(0, 100, 0, 40)
+    buyButton.Position = UDim2.new(1, -110, 0, 50)
+    buyButton.BackgroundColor3 = Color3.new(0, 0.7, 0)
+    buyButton.Text = "BUY"
+    buyButton.TextColor3 = Color3.new(1, 1, 1)
+    buyButton.TextScaled = true
+    buyButton.Font = Enum.Font.SourceSansBold
+    buyButton.Parent = itemFrame
+    
+    local buyCorner = Instance.new("UICorner")
+    buyCorner.CornerRadius = UDim.new(0, 8)
+    buyCorner.Parent = buyButton
+    
+    -- Buy button functionality
+    buyButton.MouseButton1Click:Connect(function()
+        -- Disable button during purchase
+        buyButton.Active = false
+        buyButton.Text = "BUYING..."
+        buyButton.BackgroundColor3 = Color3.new(0.5, 0.5, 0.5)
+        
+        -- Attempt purchase
+        local result = shopPurchase:InvokeServer(item.id)
+        
+        if result.success then
+            -- Success animation
+            buyButton.Text = "BOUGHT!"
+            buyButton.BackgroundColor3 = Color3.new(0, 1, 0)
+            
+            -- Update coins display
+            updateCoinsDisplay()
+            
+            -- Show success effect
+            local successTween = TweenService:Create(
+                itemFrame,
+                TweenInfo.new(0.3, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out),
+                {Size = UDim2.new(1, -10, 0, 105)}
+            )
+            successTween:Play()
+            
+            successTween.Completed:Connect(function()
+                local resetTween = TweenService:Create(
+                    itemFrame,
+                    TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                    {Size = UDim2.new(1, -16, 0, 100)}
+                )
+                resetTween:Play()
+            end)
+            
+            wait(2)
+            if item.category == "upgrades" then
+                buyButton.Text = "OWNED"
+                buyButton.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+            else
+                buyButton.Text = "BUY"
+                buyButton.BackgroundColor3 = Color3.new(0, 0.7, 0)
+                buyButton.Active = true
+            end
+        else
+            -- Failure animation
+            buyButton.Text = "FAILED"
+            buyButton.BackgroundColor3 = Color3.new(1, 0, 0)
+            
+            -- Show error message
+            local errorLabel = Instance.new("TextLabel")
+            errorLabel.Size = UDim2.new(0, 200, 0, 30)
+            errorLabel.Position = UDim2.new(0, 80, 1, 5)
+            errorLabel.BackgroundTransparency = 1
+            errorLabel.Text = result.message
+            errorLabel.TextColor3 = Color3.new(1, 0, 0)
+            errorLabel.TextScaled = true
+            errorLabel.Font = Enum.Font.SourceSans
+            errorLabel.Parent = itemFrame
+            
+            game:GetService("Debris"):AddItem(errorLabel, 3)
+            
+            wait(2)
+            buyButton.Text = "BUY"
+            buyButton.BackgroundColor3 = Color3.new(0, 0.7, 0)
+            buyButton.Active = true
+        end
+    end)
+    
+    return itemFrame
+end
+
+local function loadShopItems()
+    -- Clear existing items
+    for _, child in pairs(scrollFrame:GetChildren()) do
+        if child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
+    
+    -- Get shop items from server
+    local items = shopData:InvokeServer()
+    
+    -- Create item frames
+    for i, item in pairs(items) do
+        createItemFrame(item, i)
+    end
+    
+    -- Update scroll frame canvas size
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, #items * 110)
+end
+
+local function toggleShop()
+    shopFrame.Visible = not shopFrame.Visible
+    
+    if shopFrame.Visible then
+        -- Load shop items and update coins
+        loadShopItems()
+        updateCoinsDisplay()
+        
+        -- Slide in animation
+        shopFrame.Position = UDim2.new(0.5, -350, 0, -500)
+        local slideIn = TweenService:Create(
+            shopFrame,
+            TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+            {Position = UDim2.new(0.5, -350, 0.5, -250)}
+        )
+        slideIn:Play()
+    else
+        -- Slide out animation
+        local slideOut = TweenService:Create(
+            shopFrame,
+            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+            {Position = UDim2.new(0.5, -350, 0, -500)}
+        )
+        slideOut:Play()
+    end
+end
+
+-- Close button functionality
+closeButton.MouseButton1Click:Connect(function()
+    toggleShop()
+end)
+
+-- Key binding for shop (B key)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.B then
+        toggleShop()
+    end
+end)
+
+-- Update coins display when leaderstats change
+player.ChildAdded:Connect(function(child)
+    if child.Name == "leaderstats" then
+        local coins = child:WaitForChild("Coins")
+        coins.Changed:Connect(updateCoinsDisplay)
+        updateCoinsDisplay()
+    end
+end)
+
+print("Shop GUI loaded successfully! Press B to open shop.")
