@@ -1,1 +1,83 @@
+-- ===== MAIN GAME MANAGER SCRIPT =====
+-- Place this script in ServerScriptService
+-- This manages overall game state and player data
 
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+-- Create RemoteEvents folder for client-server communication
+local remoteEvents = Instance.new("Folder")
+remoteEvents.Name = "RemoteEvents"
+remoteEvents.Parent = ReplicatedStorage
+
+-- Create individual RemoteEvents
+local coinCollected = Instance.new("RemoteEvent")
+coinCollected.Name = "CoinCollected"
+coinCollected.Parent = remoteEvents
+
+local powerUpActivated = Instance.new("RemoteEvent")
+powerUpActivated.Name = "PowerUpActivated"
+powerUpActivated.Parent = remoteEvents
+
+local teleportPlayer = Instance.new("RemoteEvent")
+teleportPlayer.Name = "TeleportPlayer"
+teleportPlayer.Parent = remoteEvents
+
+-- Player data storage
+local playerData = {}
+
+-- Initialize player data when they join
+Players.PlayerAdded:Connect(function(player)
+    playerData[player] = {
+        coins = 0,
+        lives = 3,
+        powerUps = {},
+        checkpointPosition = nil
+    }
+    
+    -- Create leaderstats
+    local leaderstats = Instance.new("Folder")
+    leaderstats.Name = "leaderstats"
+    leaderstats.Parent = player
+    
+    local coins = Instance.new("IntValue")
+    coins.Name = "Coins"
+    coins.Value = 0
+    coins.Parent = leaderstats
+    
+    local lives = Instance.new("IntValue")
+    lives.Name = "Lives"
+    lives.Value = 3
+    lives.Parent = leaderstats
+    
+    print(player.Name .. " joined the game!")
+end)
+
+-- Clean up player data when they leave
+Players.PlayerRemoving:Connect(function(player)
+    if playerData[player] then
+        playerData[player] = nil
+        print(player.Name .. " left the game!")
+    end
+end)
+
+-- Handle coin collection
+coinCollected.OnServerEvent:Connect(function(player, coinValue)
+    if playerData[player] then
+        playerData[player].coins = playerData[player].coins + coinValue
+        player.leaderstats.Coins.Value = playerData[player].coins
+        print(player.Name .. " collected " .. coinValue .. " coins!")
+    end
+end)
+
+-- Handle power-up activation
+powerUpActivated.OnServerEvent:Connect(function(player, powerUpType, duration)
+    if playerData[player] then
+        playerData[player].powerUps[powerUpType] = tick() + duration
+        print(player.Name .. " activated " .. powerUpType .. " power-up!")
+    end
+end)
+
+print("Main Game Manager loaded successfully!")
